@@ -1,34 +1,50 @@
-name: CI Workflow
+name: Node.js CI/CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
     steps:
-    # Checkout the code from the repository
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    # Set up Node.js
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
       with:
-        node-version: '16'  # Set the Node.js version you want to use
-
-    # Install dependencies
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
     - name: Install dependencies
-      run: npm install
-
-    # Run tests (assuming you're using a test command like 'npm test')
+      run: npm ci
+      
+    - name: Run linting
+      run: npm run lint
+      
     - name: Run tests
       run: npm test
-
-    # Optionally, you can add other steps for linting, building, etc.
+      
+    - name: Build
+      run: npm run build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build
+        path: dist/
+        
+    - name: Cache node modules
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
